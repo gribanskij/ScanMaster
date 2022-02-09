@@ -13,9 +13,11 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import com.google.gson.Gson
 import com.gribanskij.scanmaster.databinding.ActivityxLiveBarcodeBinding
 import com.gribanskij.scanmaster.settings.SettingsActivity
 import com.gribanskij.scanmaster.R
+import com.gribanskij.scanmaster.model.database.entities.Contact
 
 class LiveBarcodeScanningActivityX : AppCompatActivity(), View.OnClickListener {
 
@@ -73,6 +75,16 @@ class LiveBarcodeScanningActivityX : AppCompatActivity(), View.OnClickListener {
                 sendScanResult(backResult)
             }
         }
+
+
+
+        val gson = Gson()
+        val result = gson.toJson(Contact())
+
+
+        val rrr = gson.fromJson(result,Contact::class.java)
+
+        val rt = 2
     }
 
     private fun bindAllCameraUseCases() {

@@ -1,16 +1,13 @@
 package com.gribanskij.scanmaster.model.database.entities
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 
-@Entity
 data class Contact (
-    @PrimaryKey val id: Int,
-    val title:String,
-    val organization:String?,
-    val adressid:Int?,
-    val emailid:Int?,
-    val nameid:Int?,
-    val phoneid:Int?,
-    val urlid:Int?
+    val title:String = "?",
+    val organization:String? = null,
+    val adressid:Int? = null,
+    val emailid:Int? = null,
+    val nameid:Int? = null,
+    val phoneid:Int? = null,
+    val urlid:Int? = null,
+    val list:List<Any?>? = mutableListOf(1,null,null,"fgshsdh")
     )
