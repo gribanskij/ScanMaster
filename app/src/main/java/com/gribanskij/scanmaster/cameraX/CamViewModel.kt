@@ -25,11 +25,14 @@ class CamViewModel(application: Application) : AndroidViewModel(application) {
     private val regGtin = ("(?<=01)\\d{14}(?=21)").toRegex()
     private val regSn = ("(?<=21)\\w{13}").toRegex()
 
+    private val barcodeScanner: BarcodeScanner = BarcodeScanning.getClient()
+    /*
     private val barcodeScanner: BarcodeScanner = BarcodeScanning.getClient(
         BarcodeScannerOptions.Builder()
             .setBarcodeFormats(Barcode.FORMAT_DATA_MATRIX)
             .build()
     )
+     */
 
     val cameraProviderLiveData = MutableLiveData<ProcessCameraProvider?>().apply {
         viewModelScope.launch(Dispatchers.Default) {
@@ -56,6 +59,62 @@ class CamViewModel(application: Application) : AndroidViewModel(application) {
             val inputImage = InputImage.fromMediaImage(imageProxy.image!!, imageProxy.imageInfo.rotationDegrees)
             val res = barcodeScanner.process(inputImage)
             while (!res.isComplete) delay(1)
+
+
+            val bbb = res.result.map { bar->
+                val valueType = bar.valueType
+                // See API reference for complete list of supported types
+                when (valueType) {
+                    Barcode.TYPE_WIFI -> {
+                        val ssid = bar.wifi!!.ssid
+                        val password = bar.wifi!!.password
+                        val type = bar.wifi!!.encryptionType
+                    }
+                    Barcode.TYPE_URL -> {
+                        val title = bar.url!!.title
+                        val url = bar.url!!.url
+                    }
+                    Barcode.FORMAT_DATA_MATRIX -> {
+                        val raw = bar.rawValue?:"0"
+                        val info = "GTIN:${regGtin.find(raw)?.groupValues?.first()?:"?"}  S/N:${regSn.find(raw)?.groupValues?.first()?:"?"}"
+                    }
+                    Barcode.TYPE_EMAIL -> {
+                        val email = bar!!.email
+                    }
+                    Barcode.TYPE_UNKNOWN -> {
+                        val text = bar!!.displayValue
+                    }
+                    Barcode.TYPE_CALENDAR_EVENT -> {
+                        val event = bar!!.calendarEvent
+                    }
+                    Barcode.TYPE_CONTACT_INFO -> {
+                        val contact = bar.contactInfo
+                    }
+                    Barcode.TYPE_GEO -> {
+                        val geo = bar!!.geoPoint
+                    }
+                    Barcode.TYPE_DRIVER_LICENSE -> {
+                        val idCard = bar!!.driverLicense
+                    }
+                    Barcode.TYPE_ISBN -> {
+                        val isbn = bar!!.displayValue
+                    }
+                    Barcode.TYPE_PHONE -> {
+                        val phone = bar!!.phone
+                    }
+                    Barcode.TYPE_PRODUCT -> {
+                        val product = bar!!.displayValue
+                    }
+                    Barcode.TYPE_TEXT -> {
+                        val text = bar!!.displayValue
+                    }
+                    Barcode.TYPE_SMS -> {
+                        val sms = bar!!.sms
+                    }
+                }
+            }
+
+
             val bars = res.result.map {
                 val raw = it.rawValue?:"0"
                 val format = "GTIN:${regGtin.find(raw)?.groupValues?.first()?:"?"}  S/N:${regSn.find(raw)?.groupValues?.first()?:"?"}"

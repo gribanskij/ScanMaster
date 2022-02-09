@@ -8,4 +8,5 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
     }
+    //<a href="https://www.flaticon.com/free-icons/qr-code" title="qr code icons">Qr code icons created by Freepik - Flaticon</a>
 }

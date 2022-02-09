@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.kapt'
 }
 
 android {
@@ -14,6 +15,15 @@ android {
         versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += [
+                        "room.schemaLocation"  : "$projectDir/schemas".toString(),
+                        "room.incremental"     : "true",
+                        "room.expandProjection": "true"]
+            }
+        }
     }
 
     buildTypes {
@@ -36,10 +46,13 @@ android {
     buildFeatures {
         viewBinding true
     }
+
+    packagingOptions {
+        exclude 'META-INF/atomicfu.kotlin_module'
+    }
 }
 
 dependencies {
-
 
     implementation 'com.google.android.material:material:1.5.0'
     implementation "android.arch.lifecycle:extensions:1.1.1"
@@ -47,18 +60,17 @@ dependencies {
     implementation "androidx.core:core-ktx:1.7.0"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.0"
     implementation 'androidx.preference:preference-ktx:1.2.0'
-
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.0"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.4.0"
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.4.0'
-
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2'
-
     implementation "androidx.camera:camera-camera2:1.1.0-beta01"
     implementation "androidx.camera:camera-lifecycle:1.1.0-beta01"
     implementation "androidx.camera:camera-view:1.1.0-beta01"
-
     implementation 'com.google.mlkit:barcode-scanning:17.0.2'
+    kapt 'androidx.room:room-compiler:2.4.1'
+    implementation 'androidx.room:room-runtime:2.4.1'
+    implementation 'androidx.room:room-ktx:2.4.1'
 
 
 }
