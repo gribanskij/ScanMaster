@@ -1,14 +1,24 @@
 package com.gribanskij.scanmaster
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+
+import com.gribanskij.scanmaster.cameraX.*
+import com.gribanskij.scanmaster.databinding.ActivityMainBinding
+
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
+        if (!Utils.allPermissionsGranted(this)) {
+            Utils.requestRuntimePermissions(this)
+        }
     }
-    //<a href="https://www.flaticon.com/free-icons/qr-code" title="qr code icons">Qr code icons created by Freepik - Flaticon</a>
 }

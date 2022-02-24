@@ -8,6 +8,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.google.android.libraries.barhopper.RecognitionOptions.DATA_MATRIX
 import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -21,6 +22,8 @@ import java.util.concurrent.ExecutionException
 class CamViewModel(application: Application) : AndroidViewModel(application) {
 
     private val TAG = "camViewModel"
+
+    private var isStopProcess = false
 
     private val regGtin = ("(?<=01)\\d{14}(?=21)").toRegex()
     private val regSn = ("(?<=21)\\w{13}").toRegex()
@@ -55,10 +58,18 @@ class CamViewModel(application: Application) : AndroidViewModel(application) {
     @SuppressLint("UnsafeOptInUsageError")
     fun processImage(imageProxy: ImageProxy) {
 
+
+        if (isStopProcess){
+            imageProxy.close()
+            return
+        }
+
         viewModelScope.launch(Dispatchers.Default) {
             val inputImage = InputImage.fromMediaImage(imageProxy.image!!, imageProxy.imageInfo.rotationDegrees)
             val res = barcodeScanner.process(inputImage)
             while (!res.isComplete) delay(1)
+
+            val unknownError = "UNKNOWN"
 
 
             val bbb = res.result.map { bar->
@@ -66,62 +77,80 @@ class CamViewModel(application: Application) : AndroidViewModel(application) {
                 // See API reference for complete list of supported types
                 when (valueType) {
                     Barcode.TYPE_WIFI -> {
-                        val ssid = bar.wifi!!.ssid
-                        val password = bar.wifi!!.password
-                        val type = bar.wifi!!.encryptionType
+                        val ssid = bar.wifi?.ssid?:"?"
+                        val password = bar.wifi?.password?:"?"
+                        val type = bar.wifi?.encryptionType?:"?"
+                        val info = "${ssid}/${password}/${type}"
+                        Pair(bar,info)
                     }
                     Barcode.TYPE_URL -> {
-                        val title = bar.url!!.title
-                        val url = bar.url!!.url
+                        val title = bar.url?.title?:"?"
+                        val url = bar.url?.url?:"?"
+                        val info = "${title}/${url}"
+                        Pair(bar,info)
                     }
-                    Barcode.FORMAT_DATA_MATRIX -> {
+                    /*
+                    Barcode.DA -> {
                         val raw = bar.rawValue?:"0"
                         val info = "GTIN:${regGtin.find(raw)?.groupValues?.first()?:"?"}  S/N:${regSn.find(raw)?.groupValues?.first()?:"?"}"
+                        Pair(bar,info)
                     }
+                     */
                     Barcode.TYPE_EMAIL -> {
                         val email = bar!!.email
+                        Pair(bar,bar.displayValue?:unknownError)
                     }
                     Barcode.TYPE_UNKNOWN -> {
                         val text = bar!!.displayValue
+                        Pair(bar,bar.displayValue?:unknownError)
                     }
                     Barcode.TYPE_CALENDAR_EVENT -> {
                         val event = bar!!.calendarEvent
+                        Pair(bar,bar.displayValue?:unknownError)
                     }
                     Barcode.TYPE_CONTACT_INFO -> {
                         val contact = bar.contactInfo
+                        Pair(bar,bar.displayValue?:unknownError)
                     }
                     Barcode.TYPE_GEO -> {
                         val geo = bar!!.geoPoint
+                        Pair(bar,bar.displayValue?:unknownError)
                     }
                     Barcode.TYPE_DRIVER_LICENSE -> {
                         val idCard = bar!!.driverLicense
+                        Pair(bar,bar.displayValue?:unknownError)
                     }
                     Barcode.TYPE_ISBN -> {
                         val isbn = bar!!.displayValue
+                        Pair(bar,bar.displayValue?:unknownError)
                     }
                     Barcode.TYPE_PHONE -> {
                         val phone = bar!!.phone
+                        Pair(bar,bar.displayValue?:unknownError)
                     }
                     Barcode.TYPE_PRODUCT -> {
                         val product = bar!!.displayValue
+                        Pair(bar,bar.displayValue?:unknownError)
                     }
                     Barcode.TYPE_TEXT -> {
-                        val text = bar!!.displayValue
+                        val raw = bar.rawValue?:"0"
+                        val info = if (regGtin.find(raw)?.groupValues?.isNotEmpty() == true) "GTIN:${regGtin.find(raw)?.groupValues?.first()?:"?"}  S/N:${regSn.find(raw)?.groupValues?.first()?:"?"}"
+                        else bar.displayValue?:unknownError
+                        Pair(bar,info)
                     }
                     Barcode.TYPE_SMS -> {
                         val sms = bar!!.sms
+                        Pair(bar,bar.displayValue?:unknownError)
+                    }
+                    else -> {
+                        Pair(bar,"UNKNOWN")
                     }
                 }
             }
 
-
-            val bars = res.result.map {
-                val raw = it.rawValue?:"0"
-                val format = "GTIN:${regGtin.find(raw)?.groupValues?.first()?:"?"}  S/N:${regSn.find(raw)?.groupValues?.first()?:"?"}"
-                Pair(it,format)
-            }
-            barsResults.postValue(bars)
+            barsResults.postValue(bbb)
             imageProxy.close()
+            if (bbb.isNotEmpty())isStopProcess = true
         }
     }
 

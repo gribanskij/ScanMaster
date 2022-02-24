@@ -1,25 +1,23 @@
-package com.gribanskij.scanmaster.cameraX
+package com.gribanskij.scanmaster.navigation
 
-
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.util.Rational
 import android.util.Size
-import android.view.Surface.*
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import com.google.gson.Gson
-import com.gribanskij.scanmaster.databinding.ActivityxLiveBarcodeBinding
-import com.gribanskij.scanmaster.settings.SettingsActivity
 import com.gribanskij.scanmaster.R
-import com.gribanskij.scanmaster.model.database.entities.Contact
+import com.gribanskij.scanmaster.cameraX.BarcodeGraphic
+import com.gribanskij.scanmaster.cameraX.CamViewModel
+import com.gribanskij.scanmaster.cameraX.Intents
+import com.gribanskij.scanmaster.databinding.ScanFragmentBinding
+import com.gribanskij.scanmaster.settings.SettingsActivity
 
-class LiveBarcodeScanningActivityX : AppCompatActivity(), View.OnClickListener {
+class ScanFragment:Fragment (R.layout.scan_fragment) {
 
     private var previewUseCase: Preview? = null
     private var analysisUseCase: ImageAnalysis? = null
@@ -33,42 +31,27 @@ class LiveBarcodeScanningActivityX : AppCompatActivity(), View.OnClickListener {
     private var camera: Camera? = null
 
     private lateinit var model: CamViewModel
-    private lateinit var binding: ActivityxLiveBarcodeBinding
+
+
+    private var _binding: ScanFragmentBinding? = null
+    private val binding get() = _binding!!
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        model = ViewModelProvider(this)[CamViewModel::class.java]
+    }
 
-        binding = ActivityxLiveBarcodeBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        _binding = ScanFragmentBinding.bind(view)
 
-        if (!Utils.allPermissionsGranted(this)) {
-            Utils.requestRuntimePermissions(this)
-        }
-
-        binding.closeButton.setOnClickListener(this)
-        binding.flashButton.setOnClickListener(this)
-        binding.settingsButton.setOnClickListener(this)
-
-
-        model = ViewModelProvider(
-            this,
-            ViewModelProvider.AndroidViewModelFactory.getInstance(application)
-        )[CamViewModel::class.java]
-        model.cameraProviderLiveData.observe(this) { provider: ProcessCameraProvider? ->
-            cameraProvider = provider
-            bindAllCameraUseCases()
-
-        }
-
-        model.barsResults.observe(this) {
-
+        model.barsResults.observe(viewLifecycleOwner) {
             binding.graphicOverlay.clear()
-
             it.forEach { barcode ->
                 binding.graphicOverlay.add(BarcodeGraphic(binding.graphicOverlay, barcode))
             }
             binding.graphicOverlay.invalidate()
-
             if (isNeedSendResult() && it.isNotEmpty()) {
                 val result = it.first()
                 val backResult = makeResultIntent(result.first.rawValue ?: "?")
@@ -76,47 +59,34 @@ class LiveBarcodeScanningActivityX : AppCompatActivity(), View.OnClickListener {
             }
         }
 
+        model.cameraProviderLiveData.observe(viewLifecycleOwner) { provider: ProcessCameraProvider? ->
+            cameraProvider = provider
+            bindAllCameraUseCases()
+
+        }
+
+        binding.closeButton.setOnClickListener {
+            onClick(it)
+        }
+        binding.flashButton.setOnClickListener{
+            onClick(it)
+        }
+        binding.settingsButton.setOnClickListener{
+            onClick(it)
+        }
 
 
-        val gson = Gson()
-        val result = gson.toJson(Contact())
-
-
-        val rrr = gson.fromJson(result,Contact::class.java)
-
-        val rt = 2
     }
+
 
     private fun bindAllCameraUseCases() {
         cameraProvider?.let {
             bindPreviewUseCase(it)
             bindAnalysisUseCase(it)
-            //bindGrope(it)
         }
     }
 
 
-    @SuppressLint("UnsafeOptInUsageError")
-    private fun bindGrope(cameraProvider: ProcessCameraProvider){
-        cameraProvider.unbindAll()
-
-        val viewPort =  ViewPort.Builder(Rational(4, 3), ROTATION_270).build()
-
-        previewUseCase = Preview.Builder()
-            .setTargetResolution(targetResolution )
-            .build()
-            .also {
-                it.setSurfaceProvider(binding.previewView.surfaceProvider)
-            }
-
-        val useCaseGroup = UseCaseGroup.Builder()
-            .addUseCase(previewUseCase!!)
-            .setViewPort(viewPort)
-            .build()
-        cameraProvider.bindToLifecycle(this, cameraSelector, useCaseGroup)
-
-
-    }
 
     private fun bindPreviewUseCase(cameraProvider: ProcessCameraProvider) {
         previewUseCase?.let {
@@ -144,7 +114,7 @@ class LiveBarcodeScanningActivityX : AppCompatActivity(), View.OnClickListener {
         needUpdateGraphicOverlayImageSourceInfo = true
 
         analysisUseCase?.setAnalyzer(
-            ContextCompat.getMainExecutor(this),
+            ContextCompat.getMainExecutor(requireContext()),
             ImageAnalysis.Analyzer { imageProxy: ImageProxy ->
 
                 if(needUpdateGraphicOverlayImageSourceInfo) {
@@ -164,15 +134,10 @@ class LiveBarcodeScanningActivityX : AppCompatActivity(), View.OnClickListener {
         camera = cameraProvider.bindToLifecycle(this, cameraSelector, analysisUseCase)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        camera = null
-    }
-
-    override fun onClick(view: View) {
+    private fun onClick(view: View) {
         when (view.id) {
 
-            R.id.close_button -> onBackPressed()
+            //R.id.close_button -> onBackPressed()
             R.id.flash_button -> {
                 binding.flashButton.let {
                     if (it.isSelected) {
@@ -188,29 +153,32 @@ class LiveBarcodeScanningActivityX : AppCompatActivity(), View.OnClickListener {
             }
             R.id.settings_button -> {
                 binding.settingsButton.isEnabled = false
-                startActivity(Intent(this, SettingsActivity::class.java))
+                startActivity(Intent(requireActivity(), SettingsActivity::class.java))
             }
         }
     }
 
 
     private fun isNeedSendResult():Boolean {
-        return intent.action == Intents.Scan.ACTION
+        return requireActivity().intent.action == Intents.Scan.ACTION
 
     }
 
     private fun makeResultIntent(rawBarCode: String): Intent {
-        return Intent(intent.action).apply {
+        return Intent(requireActivity().intent.action).apply {
             putExtra(Intents.Scan.RESULT, rawBarCode)
         }
     }
 
     private fun sendScanResult(resultIntent: Intent) {
-        setResult(RESULT_OK, resultIntent)
-        finish()
+        requireActivity().setResult(AppCompatActivity.RESULT_OK, resultIntent)
+        requireActivity().finish()
     }
 
-    companion object {
-        private const val TAG = "LiveBarcodeActivity"
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+        camera=null
     }
 }
